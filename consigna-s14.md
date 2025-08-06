@@ -8,19 +8,46 @@ Esta evaluación técnica se basa en una aplicación Android que implementa un s
 ### 1.1 Identificación de Vulnerabilidades (2 puntos)
 Analiza el archivo `DataProtectionManager.kt` y responde:
 - ¿Qué método de encriptación se utiliza para proteger datos sensibles?
+El sistema utiliza encriptación AES-256, en modos SIV y GCM, que son resistentes a ataques como manipulación de texto cifrado o repetición.
 - Identifica al menos 2 posibles vulnerabilidades en la implementación actual del logging
+⦁	Almacenamiento de logs sin cifrado, guardandolos en texto plano en accessLogPrefs. Esto podría filtrar información sensible si alguien accede al almacenamiento local de la app.
+⦁	Riesgo de crecimiento descontrolado o mal manejo del tamaño del log; es decir, por cada llamada a logAccess, hay dos escrituras seguidas: una para guardar todos los logs incluyendo el nuevo, y otra si excede los 100. Esto degrada el rendimiento y puede crear condiciones de carrera o corrupción si hay múltiples accesos simultáneos.
 - ¿Qué sucede si falla la inicialización del sistema de encriptación?
+Se entra en el bloque catch y se usa un SharedPreferences no cifrado como "fallback", llamado "fallback_prefs" para almacenar datos sensibles. Esto reduce el nivel de seguridad de manera significativa, ya que ahora los datos sensibles quedan expuestos en texto claro.
 
 ### 1.2 Permisos y Manifiesto (2 puntos)
 Examina `AndroidManifest.xml` y `MainActivity.kt`:
 - Lista todos los permisos peligrosos declarados en el manifiesto
+⦁	android.permission.CAMERA: Acceso a la cámara.
+⦁	android.permission.READ_EXTERNAL_STORAGE: Leer archivos en almacenamiento externo.
+⦁	android.permission.READ_MEDIA_IMAGES: Leer imágenes del almacenamiento.
+⦁	android.permission.RECORD_AUDIO: Grabar audio con el micrófono.
+⦁	android.permission.READ_CONTACTS: Leer contactos del usuario.personales.
+⦁	android.permission.CALL_PHONE: Realizar llamadas telefónicas directamente.
+⦁	android.permission.SEND_SMS: Enviar mensajes SMS sin intervención del usuario	
+⦁	android.permission.ACCESS_COARSE_LOCATION: Obtener ubicación aproximada
 - ¿Qué patrón se utiliza para solicitar permisos en runtime?
+El código usa el patrón recomendado de ActivityResultContracts.RequestPermission(), evitando el uso obsoleto de onRequestPermissionsResult(), además de incluir: Revisión del estado del permiso, Razonamiento con shouldShowRequestPermissionRationale(), Razonamiento con shouldShowRequestPermissionRationale() y Registro de acceso con logAccess.
+
+	private val requestPermissionLauncher = registerForActivityResult(
+		ActivityResultContracts.RequestPermission()
+	) { isGranted -> ... }
 - Identifica qué configuración de seguridad previene backups automáticos
+    android:allowBackup="false"
+Esta configuración impide que los datos sean respaldados por el sistema operativo cuando el usuario cambia de dispositivo o reinstala la app.
 
 ### 1.3 Gestión de Archivos (3 puntos)
 Revisa `CameraActivity.kt` y `file_paths.xml`:
 - ¿Cómo se implementa la compartición segura de archivos de imágenes?
+La compartición segura se implementa mediante el componente FileProvider, permite a la app compartir archivos con otras aplicaciones sin exponer directamente las rutas del sistema de archivos.
+	currentPhotoUri = FileProvider.getUriForFile(
+	    this,
+	    "com.example.seguridad_priv_a.fileprovider", // autoridad
+	    photoFile
+	)
 - ¿Qué autoridad se utiliza para el FileProvider?
+    com.example.seguridad_priv_a.fileprovider
+Esta autoridad debe ser única por aplicación y coincidir exactamente en el manifiesto y en el código. Se recomienda que use el paquete de la app como prefijo para evitar conflictos.
 - Explica por qué no se debe usar `file://` URIs directamente
 
 ## Parte 2: Implementación y Mejoras Intermedias (8-14 puntos)
