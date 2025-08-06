@@ -20,6 +20,9 @@ class MainActivity : AppCompatActivity() {
     private val dataProtectionManager by lazy { 
         (application as PermissionsApplication).dataProtectionManager 
     }
+    private val securityAuditManager by lazy {
+        (application as PermissionsApplication).securityAuditManager
+    }
     
     private val permissions = listOf(
         PermissionItem(
@@ -82,6 +85,7 @@ class MainActivity : AppCompatActivity() {
             
             val status = if (isGranted) "OTORGADO" else "DENEGADO"
             dataProtectionManager.logAccess("PERMISSION", "${permission.name}: $status")
+            securityAuditManager.registerSensitiveAction("PERMISSION_${status}_${permission.name}")
             
             if (isGranted) {
                 openActivity(permission)
@@ -101,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         updatePermissionStatuses()
         
         dataProtectionManager.logAccess("NAVIGATION", "MainActivity abierta")
+        securityAuditManager.registerSensitiveAction("ACTIVITY_OPEN_Main")
     }
     
     private fun setupRecyclerView() {
@@ -159,6 +164,7 @@ class MainActivity : AppCompatActivity() {
         permission.permission?.let { perm ->
             currentRequestedPermission = permission
             dataProtectionManager.logAccess("PERMISSION", "${permission.name}: SOLICITADO")
+            securityAuditManager.registerSensitiveAction("PERMISSION_REQUEST_${permission.name}")
             requestPermissionLauncher.launch(perm)
         }
     }
@@ -168,6 +174,7 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, activityClass)
             startActivity(intent)
             dataProtectionManager.logAccess("NAVIGATION", "${permission.name} actividad abierta")
+            securityAuditManager.registerSensitiveAction("NAVIGATE_${permission.name}")
         }
     }
     
